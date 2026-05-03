@@ -1,0 +1,22 @@
+{
+  "name": "ナンプレ補助",
+  "short_name": "ナンプレ補助",
+  "description": "数独（ナンプレ）の候補数字を補助するアプリ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f0f0f0",
+  "theme_color": "#007AFF",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
