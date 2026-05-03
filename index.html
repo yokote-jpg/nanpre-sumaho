@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>ナンプレ補助</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, sans-serif;
+    background: #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ── 上部パネル ── */
+  #panel-top {
+    display: flex;
+    align-items: center;
+    background: #e8e8e8;
+    border-bottom: 1px solid #ccc;
+    padding: 6px 8px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* スイッチ */
+  #switch-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  #switch-label {
+    font-size: 12px;
+    color: #333;
+  }
+  .toggle {
+    position: relative;
+    width: 44px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+  .toggle input { display: none; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: #ccc;
+    border-radius: 13px;
+    transition: background 0.2s;
+    cursor: pointer;
+  }
+  .toggle input:checked + .toggle-track { background: #007AFF; }
+  .toggle-thumb {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 20px; height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: left 0.2s;
+    pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle input:checked ~ .toggle-thumb { left: 21px; }
+
+  /* ボタン共通 */
+  .btn {
+    flex: 1;
+    height: 38px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #btn-get  { background: #007AFF; color: white; }
+  #btn-clr  { background: #FF9500; color: white; }
+  #btn-make { background: #34C759; color: white; }
+  #btn-end  { background: #FF3B30; color: white; }
+
+  /* ── グリッド ── */
+  #grid-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    overflow: hidden;
+    background: #f0f0f0;
+  }
+
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    grid-template-rows: repeat(9, 1fr);
+    border: 2px solid #333;
+  }
+
+  .cell {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    border: 0.5px solid #aaa;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+
+  /* 3×3ブロック境界 */
+  .cell:nth-child(3n+1)  { border-left: 2px solid #333; }
+  .cell:nth-child(n+1):nth-child(-n+9)   { border-top: 2px solid #333; }
+  .cell:nth-child(n+28):nth-child(-n+36) { border-top: 2px solid #333; }
+  .cell:nth-child(n+55):nth-child(-n+63) { border-top: 2px solid #333; }
+
+  .cell.block-white { background: #ffffff; }
+  .cell.block-blue  { background: #D0E8FF; }
+  .cell.selected    { background: #ADD8E6 !important; }
+
+  .cell-number {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #000;
+    line-height: 1;
+  }
+
+  .cand-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-weight: normal;
+    line-height: 1;
+  }
+
+  /* ── 下部パネル（数字ボタン） ── */
+  #panel-bottom {
+    display: flex;
+    background: #e8e8e8;
+    border-top: 1px solid #ccc;
+    padding: 6px 4px;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+
+  .num-btn {
+    flex: 1;
+    height: 56px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: white;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .num-btn:active { background: #ddd; }
+
+  #btn-bs {
+    flex: 1;
+    height: 56px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #f8d7da;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #btn-bs:active { background: #f5c2c7; }
+
+  /* ── モーダル ── */
+  #modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+  }
+  #modal-overlay.show { display: flex; }
+
+  #modal-box {
+    background: white;
+    border-radius: 16px;
+    padding: 24px 20px;
+    width: 88%;
+    max-width: 360px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+
+  #modal-box h2 {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    text-align: center;
+    color: #333;
+  }
+
+  .modal-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 10px;
+  }
+
+  .modal-row label {
+    font-size: 14px;
+    color: #555;
+    width: 56px;
+    flex-shrink: 0;
+  }
+
+  .modal-row select {
+    flex: 1;
+    height: 36px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 14px;
+    padding: 0 8px;
+    background: white;
+  }
+
+  #modal-btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  #modal-btns button {
+    flex: 1;
+    height: 44px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  #modal-cancel { background: #e0e0e0; color: #333; }
+  #modal-go     { background: #34C759; color: white; }
+
+  /* ── 生成中オーバーレイ ── */
+  #generating-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 16px;
+    color: white;
+    font-size: 16px;
+  }
+  #generating-overlay.show { display: flex; }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- 上部パネル -->
+<div id="panel-top">
+  <button class="btn" id="btn-make">作成</button>
+  <button class="btn" id="btn-get">GET</button>
+  <button class="btn" id="btn-clr">CLR</button>
+  <button class="btn" id="btn-end">END</button>
+  <div id="switch-wrap">
+    <span id="switch-label">メモ</span>
+    <label class="toggle">
+      <input type="checkbox" id="layout-switch">
+      <div class="toggle-track"></div>
+      <div class="toggle-thumb"></div>
+    </label>
+  </div>
+</div>
+
+<!-- グリッド -->
+<div id="grid-wrap">
+  <div id="grid"></div>
+</div>
+
+<!-- 下部パネル -->
+<div id="panel-bottom">
+  <button class="num-btn" data-num="1">1</button>
+  <button class="num-btn" data-num="2">2</button>
+  <button class="num-btn" data-num="3">3</button>
+  <button class="num-btn" data-num="4">4</button>
+  <button class="num-btn" data-num="5">5</button>
+  <button class="num-btn" data-num="6">6</button>
+  <button class="num-btn" data-num="7">7</button>
+  <button class="num-btn" data-num="8">8</button>
+  <button class="num-btn" data-num="9">9</button>
+  <button id="btn-bs">←</button>
+</div>
+
+<!-- 問題作成モーダル -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <h2>問題作成</h2>
+    <div class="modal-row">
+      <label>難易度</label>
+      <select id="sel-difficulty">
+        <option value="0">やさしい</option>
+        <option value="1" selected>ふつう</option>
+        <option value="2">難しい</option>
+        <option value="3">超難しい</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <label>解法</label>
+      <select id="sel-technique">
+        <option value="0" selected>指定なし</option>
+        <option value="1">Naked Pair</option>
+        <option value="2">Naked Triple</option>
+        <option value="3">Hidden Pair</option>
+        <option value="4">Pointing Pair</option>
+        <option value="5">Box-Line Reduction</option>
+        <option value="6">X-Wing</option>
+        <option value="7">XY-Wing</option>
+      </select>
+    </div>
+    <div id="modal-btns">
+      <button id="modal-cancel">キャンセル</button>
+      <button id="modal-go">作成開始</button>
+    </div>
+  </div>
+</div>
+
+<!-- 生成中オーバーレイ -->
+<div id="generating-overlay">
+  <div class="spinner"></div>
+  <div id="gen-message">問題を生成中...</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  データ
+// ═══════════════════════════════════════════════
+const board     = Array.from({length:9}, () => Array(9).fill(''));
+const candidate = Array.from({length:9}, () => Array(9).fill(''));
+const myAnswer  = Array.from({length:9}, () => Array(9).fill(false));
+const solution  = Array.from({length:9}, () => Array(9).fill(''));
+const isPuzzle  = Array.from({length:9}, () => Array(9).fill(false)); // 問題セル
+
+// savedAtai（BSキー用）
+const savedAtai = Array.from({length:9}, () => Array(9).fill(''));
+let savedCellRow = -1;
+let savedCellCol = -1;
+
+let selectedRow   = -1;
+let selectedCol   = -1;
+let calcLayout    = false;
+let memoMode      = false;
+let autoCandidate = false;
+
+// ═══════════════════════════════════════════════
+//  グリッド生成
+// ═══════════════════════════════════════════════
+const gridEl = document.getElementById('grid');
+
+function blockColor(r, c) {
+  return ((Math.floor(r/3) + Math.floor(c/3)) % 2 === 0) ? 'block-white' : 'block-blue';
+}
+
+for (let r = 0; r < 9; r++) {
+  for (let c = 0; c < 9; c++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell ' + blockColor(r, c);
+    cell.dataset.r = r;
+    cell.dataset.c = c;
+
+    for (let i = 1; i <= 9; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'cand-slot';
+      slot.dataset.n = i;
+      cell.appendChild(slot);
+    }
+
+    const numDiv = document.createElement('div');
+    numDiv.className = 'cell-number';
+    cell.appendChild(numDiv);
+
+    cell.addEventListener('pointerdown', () => selectCell(r, c));
+    gridEl.appendChild(cell);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  グリッドサイズ調整
+// ═══════════════════════════════════════════════
+function resizeGrid() {
+  const wrap = document.getElementById('grid-wrap');
+  const size = Math.min(wrap.clientWidth, wrap.clientHeight) - 4;
+  gridEl.style.width  = size + 'px';
+  gridEl.style.height = size + 'px';
+
+  const cellSize = size / 9;
+  const numSize  = cellSize * 0.85;
+  const candSize = cellSize * 0.28;
+
+  document.querySelectorAll('.cell-number').forEach(el => {
+    el.style.fontSize = numSize + 'px';
+  });
+  document.querySelectorAll('.cand-slot').forEach(el => {
+    el.style.fontSize = candSize + 'px';
+  });
+}
+
+window.addEventListener('resize', resizeGrid);
+resizeGrid();
+
+// ═══════════════════════════════════════════════
+//  セル選択
+// ═══════════════════════════════════════════════
+function selectCell(r, c) {
+  selectedRow = r;
+  selectedCol = c;
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════
+//  描画
+// ═══════════════════════════════════════════════
+function renderAll() {
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const cell = gridEl.children[r * 9 + c];
+
+      cell.className = 'cell ' +
+        ((r === selectedRow && c === selectedCol) ? 'selected' : blockColor(r, c));
+
+      const numDiv = cell.querySelector('.cell-number');
+      numDiv.textContent = board[r][c];
+
+      if (myAnswer[r][c] && autoCandidate) {
+        if (solution[r][c] !== '' && board[r][c] !== solution[r][c]) {
+          numDiv.style.color = 'red';
+        } else {
+          numDiv.style.color = 'blue';
+        }
+      } else if (hasConflict(r, c)) {
+        numDiv.style.color = 'red';
+      } else {
+        numDiv.style.color = 'black';
+      }
+
+      const slots = cell.querySelectorAll('.cand-slot');
+      for (let i = 1; i <= 9; i++) {
+        slots[i-1].textContent = '';
+      }
+
+      if (board[r][c] === '' && candidate[r][c] !== '') {
+        for (let i = 1; i <= 9; i++) {
+          if (candidate[r][c].includes(String(i))) {
+            let slotIndex;
+            if (calcLayout) {
+              const tbl = {1:6, 2:7, 3:8, 4:3, 5:4, 6:5, 7:0, 8:1, 9:2};
+              slotIndex = tbl[i];
+            } else {
+              slotIndex = i - 1;
+            }
+            slots[slotIndex].textContent = String(i);
+          }
+        }
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  競合チェック
+// ═══════════════════════════════════════════════
+function hasConflict(r, c) {
+  const s = board[r][c];
+  if (!s) return false;
+  for (let i = 0; i < 9; i++) {
+    for (let j = 0; j < 9; j++) {
+      if (i === r && j === c) continue;
+      if (board[i][j] === s) {
+        if (i === r) return true;
+        if (j === c) return true;
+        if (Math.floor(i/3) === Math.floor(r/3) &&
+            Math.floor(j/3) === Math.floor(c/3)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// ═══════════════════════════════════════════════
+//  ソルバー
+// ═══════════════════════════════════════════════
+function isValid(bd, r, c, s) {
+  for (let i = 0; i < 9; i++) {
+    if (bd[r][i] === s) return false;
+    if (bd[i][c] === s) return false;
+  }
+  const br = Math.floor(r/3)*3;
+  const bc = Math.floor(c/3)*3;
+  for (let dr = 0; dr < 3; dr++)
+    for (let dc = 0; dc < 3; dc++)
+      if (bd[br+dr][bc+dc] === s) return false;
+  return true;
+}
+
+function solveSudoku(bd) {
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (bd[r][c] === '') {
+        for (let n = 1; n <= 9; n++) {
+          const s = String(n);
+          if (isValid(bd, r, c, s)) {
+            bd[r][c] = s;
+            if (solveSudoku(bd)) return true;
+            bd[r][c] = '';
+          }
+        }
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+// ═══════════════════════════════════════════════
+//  候補計算
+// ═══════════════════════════════════════════════
+function getCandidates(bd, r, c) {
+  const used = new Set();
+  for (let i = 0; i < 9; i++) {
+    if (bd[r][i]) used.add(bd[r][i]);
+    if (bd[i][c]) used.add(bd[i][c]);
+  }
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for (let dr = 0; dr < 3; dr++)
+    for (let dc = 0; dc < 3; dc++)
+      if (bd[br+dr][bc+dc]) used.add(bd[br+dr][bc+dc]);
+  let result = '';
+  for (let n = 1; n <= 9; n++)
+    if (!used.has(String(n))) result += String(n);
+  return result;
+}
+
+// ═══════════════════════════════════════════════
+//  数字ボタン
+// ═══════════════════════════════════════════════
+document.querySelectorAll('.num-btn').forEach(btn => {
+  btn.addEventListener('pointerdown', () => {
+    if (selectedRow < 0) return;
+    const r = selectedRow;
+    const c = selectedCol;
+    const num = btn.dataset.num;
+
+    if (isPuzzle[r][c]) return; // 問題セルは変更不可
+
+    if (memoMode) {
+      if (board[r][c] !== '') return;
+      if (candidate[r][c].includes(num)) {
+        candidate[r][c] = candidate[r][c].replace(num, '');
+      } else {
+        candidate[r][c] += num;
+      }
+    } else {
+      // ★ 入力前にcandidate全体を保存
+      for (let i = 0; i < 9; i++)
+        for (let j = 0; j < 9; j++)
+          savedAtai[i][j] = candidate[i][j];
+      savedCellRow = r;
+      savedCellCol = c;
+
+      if (board[r][c] === num) {
+        board[r][c] = '';
+        myAnswer[r][c] = false;
+        candidate[r][c] = savedAtai[r][c]; // 消した時も復元
+      } else {
+        board[r][c] = num;
+        myAnswer[r][c] = true;
+        candidate[r][c] = '';
+
+        if (autoCandidate) {
+          for (let i = 0; i < 9; i++)
+            for (let j = 0; j < 9; j++)
+              if (board[i][j] === '' &&
+                 (i === r || j === c ||
+                 (Math.floor(i/3) === Math.floor(r/3) &&
+                  Math.floor(j/3) === Math.floor(c/3)))) {
+                candidate[i][j] = candidate[i][j].replace(num, '');
+              }
+        }
+      }
+    }
+    renderAll();
+  });
+});
+
+// ═══════════════════════════════════════════════
+//  BSボタン（消去＋候補復元）
+// ═══════════════════════════════════════════════
+document.getElementById('btn-bs').addEventListener('pointerdown', () => {
+  if (selectedRow < 0) return;
+  const r = selectedRow;
+  const c = selectedCol;
+
+  if (isPuzzle[r][c]) return; // 問題セルは変更不可
+
+  board[r][c]    = '';
+  myAnswer[r][c] = false;
+  candidate[r][c] = '';
+
+  if (autoCandidate) {
+    if (r === savedCellRow && c === savedCellCol) {
+      // ★ 入力前のcandidate全体を復元
+      for (let i = 0; i < 9; i++)
+        for (let j = 0; j < 9; j++)
+          candidate[i][j] = savedAtai[i][j];
+    } else {
+      // 別セルの場合は全再計算
+      for (let i = 0; i < 9; i++)
+        for (let j = 0; j < 9; j++)
+          if (board[i][j] === '')
+            candidate[i][j] = getCandidates(board, i, j);
+    }
+  }
+
+  renderAll();
+});
+
+// ═══════════════════════════════════════════════
+//  GETボタン
+// ═══════════════════════════════════════════════
+document.getElementById('btn-get').addEventListener('pointerdown', () => {
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (board[r][c] !== '') {
+        myAnswer[r][c] = false;
+        isPuzzle[r][c] = true;
+      }
+
+  const work = Array.from({length:9}, (_, r) => [...board[r]]);
+  if (solveSudoku(work)) {
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++)
+        solution[r][c] = work[r][c];
+  } else {
+    alert('この問題は解けませんでした（入力ミスの可能性があります）');
+  }
+
+  autoCandidate = true;
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (board[r][c] === '')
+        candidate[r][c] = getCandidates(board, r, c);
+  renderAll();
+});
+
+// ═══════════════════════════════════════════════
+//  CLRボタン
+// ═══════════════════════════════════════════════
+document.getElementById('btn-clr').addEventListener('pointerdown', () => {
+  autoCandidate = false;
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++) {
+      board[r][c]     = '';
+      candidate[r][c] = '';
+      myAnswer[r][c]  = false;
+      isPuzzle[r][c]  = false;
+      savedAtai[r][c] = '';
+    }
+  savedCellRow = -1;
+  savedCellCol = -1;
+  selectedRow  = -1;
+  selectedCol  = -1;
+  renderAll();
+});
+
+// ═══════════════════════════════════════════════
+//  ENDボタン
+// ═══════════════════════════════════════════════
+document.getElementById('btn-end').addEventListener('pointerdown', () => {
+  window.close();
+});
+
+// ═══════════════════════════════════════════════
+//  メモモードスイッチ
+// ═══════════════════════════════════════════════
+document.getElementById('layout-switch').addEventListener('change', function() {
+  memoMode = this.checked;
+  renderAll();
+});
+
+// ═══════════════════════════════════════════════
+//  問題作成モーダル
+// ═══════════════════════════════════════════════
+document.getElementById('btn-make').addEventListener('pointerdown', () => {
+  // 盤面クリアチェック
+  let isEmpty = true;
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (board[r][c] !== '') { isEmpty = false; break; }
+
+  if (!isEmpty) {
+    alert('盤面をクリアしてから押してください。\nPlease clear the board first.');
+    return;
+  }
+  document.getElementById('modal-overlay').classList.add('show');
+});
+
+document.getElementById('modal-cancel').addEventListener('pointerdown', () => {
+  document.getElementById('modal-overlay').classList.remove('show');
+});
+
+document.getElementById('modal-go').addEventListener('pointerdown', () => {
+  document.getElementById('modal-overlay').classList.remove('show');
+  const difficulty = parseInt(document.getElementById('sel-difficulty').value);
+  const technique  = parseInt(document.getElementById('sel-technique').value);
+  startGeneration(difficulty, technique);
+});
+
+// ═══════════════════════════════════════════════
+//  問題生成
+// ═══════════════════════════════════════════════
+
+// ── シャッフル ──
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+// ── 完成盤生成 ──
+function generateFullBoard(bd) {
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (bd[r][c] === '') {
+        const nums = [1,2,3,4,5,6,7,8,9];
+        shuffleArray(nums);
+        for (const n of nums) {
+          const s = String(n);
+          if (isValid(bd, r, c, s)) {
+            bd[r][c] = s;
+            if (generateFullBoard(bd)) return true;
+            bd[r][c] = '';
+          }
+        }
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+// ── 解の個数カウント（最大limit個まで） ──
+function countSolutions(bd, limit) {
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (bd[r][c] === '') {
+        let count = 0;
+        for (let n = 1; n <= 9; n++) {
+          const s = String(n);
+          if (isValid(bd, r, c, s)) {
+            bd[r][c] = s;
+            count += countSolutions(bd, limit - count);
+            bd[r][c] = '';
+            if (count >= limit) return count;
+          }
+        }
+        return count;
+      }
+    }
+  }
+  return 1;
+}
+
+// ── 穴あけ ──
+const HINT_COUNT = [38, 32, 27, 23];
+
+function generatePuzzle(difficulty) {
+  // 完成盤生成
+  const full = Array.from({length:9}, () => Array(9).fill(''));
+  if (!generateFullBoard(full)) return null;
+
+  // コピー
+  const puzzle = Array.from({length:9}, (_, r) => [...full[r]]);
+
+  // 穴あけ順序
+  const order = Array.from({length:81}, (_, i) => i);
+  shuffleArray(order);
+
+  const target = HINT_COUNT[difficulty];
+
+  for (const idx of order) {
+    const r = Math.floor(idx / 9);
+    const c = idx % 9;
+    if (puzzle[r][c] === '') continue;
+
+    const saved = puzzle[r][c];
+    puzzle[r][c] = '';
+
+    if (countSolutions(puzzle, 2) !== 1) {
+      puzzle[r][c] = saved;
+    }
+
+    let count = 0;
+    for (let i = 0; i < 9; i++)
+      for (let j = 0; j < 9; j++)
+        if (puzzle[i][j] !== '') count++;
+    if (count <= target) break;
+  }
+
+  return puzzle;
+}
+
+// ═══════════════════════════════════════════════
+//  解法チェッカー
+// ═══════════════════════════════════════════════
+
+function buildCandidates(bd) {
+  const cands = Array.from({length:9}, () => Array(9).fill(''));
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++)
+      if (bd[r][c] === '')
+        cands[r][c] = getCandidates(bd, r, c);
+  return cands;
+}
+
+// Naked Pair
+function hasNakedPair(cands) {
+  function checkGroup(cells) {
+    for (let k = 0; k < cells.length - 1; k++) {
+      const s1 = cands[cells[k][0]][cells[k][1]];
+      if (s1.length !== 2) continue;
+      for (let m = k + 1; m < cells.length; m++) {
+        if (cands[cells[m][0]][cells[m][1]] === s1) return true;
+      }
+    }
+    return false;
+  }
+  for (let r = 0; r < 9; r++) {
+    const cells = Array.from({length:9}, (_, c) => [r, c]);
+    if (checkGroup(cells)) return true;
+  }
+  for (let c = 0; c < 9; c++) {
+    const cells = Array.from({length:9}, (_, r) => [r, c]);
+    if (checkGroup(cells)) return true;
+  }
+  for (let br = 0; br < 3; br++)
+    for (let bc = 0; bc < 3; bc++) {
+      const cells = [];
+      for (let dr = 0; dr < 3; dr++)
+        for (let dc = 0; dc < 3; dc++)
+          cells.push([br*3+dr, bc*3+dc]);
+      if (checkGroup(cells)) return true;
+    }
+  return false;
+}
+
+// Naked Triple
+function hasNakedTriple(cands) {
+  function checkGroup(cells) {
+    for (let k = 0; k < cells.length - 2; k++) {
+      const s1 = cands[cells[k][0]][cells[k][1]];
+      if (s1.length < 2 || s1.length > 3) continue;
+      for (let m = k+1; m < cells.length - 1; m++) {
+        const s2 = cands[cells[m][0]][cells[m][1]];
+        if (s2.length < 2 || s2.length > 3) continue;
+        for (let p = m+1; p < cells.length; p++) {
+          const s3 = cands[cells[p][0]][cells[p][1]];
+          if (s3.length < 2 || s3.length > 3) continue;
+          const combined = new Set([...s1, ...s2, ...s3]);
+          if (combined.size === 3) return true;
+        }
+      }
+    }
+    return false;
+  }
+  for (let r = 0; r < 9; r++) {
+    if (checkGroup(Array.from({length:9}, (_, c) => [r, c]))) return true;
+  }
+  for (let c = 0; c < 9; c++) {
+    if (checkGroup(Array.from({length:9}, (_, r) => [r, c]))) return true;
+  }
+  for (let br = 0; br < 3; br++)
+    for (let bc = 0; bc < 3; bc++) {
+      const cells = [];
+      for (let dr = 0; dr < 3; dr++)
+        for (let dc = 0; dc < 3; dc++)
+          cells.push([br*3+dr, bc*3+dc]);
+      if (checkGroup(cells)) return true;
+    }
+  return false;
+}
+
+// Hidden Pair
+function hasHiddenPair(cands) {
+  function checkGroup(cells) {
+    const cnt = Array(10).fill(0);
+    const pos = Array.from({length:10}, () => []);
+    for (let k = 0; k < cells.length; k++) {
+      const s = cands[cells[k][0]][cells[k][1]];
+      for (let n = 1; n <= 9; n++)
+        if (s.includes(String(n))) { cnt[n]++; pos[n].push(k); }
+    }
+    for (let n1 = 1; n1 <= 8; n1++) {
+      if (cnt[n1] !== 2) continue;
+      for (let n2 = n1+1; n2 <= 9; n2++) {
+        if (cnt[n2] !== 2) continue;
+        if (pos[n1][0] === pos[n2][0] && pos[n1][1] === pos[n2][1]) {
+          const k = pos[n1][0];
+          if (cands[cells[k][0]][cells[k][1]].length > 2) return true;
+          const k2 = pos[n1][1];
+          if (cands[cells[k2][0]][cells[k2][1]].length > 2) return true;
+        }
+      }
+    }
+    return false;
+  }
+  for (let r = 0; r < 9; r++) {
+    if (checkGroup(Array.from({length:9}, (_, c) => [r, c]))) return true;
+  }
+  for (let c = 0; c < 9; c++) {
+    if (checkGroup(Array.from({length:9}, (_, r) => [r, c]))) return true;
+  }
+  for (let br = 0; br < 3; br++)
+    for (let bc = 0; bc < 3; bc++) {
+      const cells = [];
+      for (let dr = 0; dr < 3; dr++)
+        for (let dc = 0; dc < 3; dc++)
+          cells.push([br*3+dr, bc*3+dc]);
+      if (checkGroup(cells)) return true;
+    }
+  return false;
+}
+
+// Pointing Pair
+function hasPointingPair(cands) {
+  for (let n = 1; n <= 9; n++) {
+    const s = String(n);
+    for (let br = 0; br < 3; br++)
+      for (let bc = 0; bc < 3; bc++) {
+        const rowSet = new Set(), colSet = new Set();
+        for (let dr = 0; dr < 3; dr++)
+          for (let dc = 0; dc < 3; dc++)
+            if (cands[br*3+dr][bc*3+dc].includes(s)) {
+              rowSet.add(br*3+dr); colSet.add(bc*3+dc);
+            }
+        if (rowSet.size === 1) {
+          const r = [...rowSet][0];
+          for (let c = 0; c < 9; c++)
+            if ((c < bc*3 || c > bc*3+2) && cands[r][c].includes(s)) return true;
+        }
+        if (colSet.size === 1) {
+          const c = [...colSet][0];
+          for (let r = 0; r < 9; r++)
+            if ((r < br*3 || r > br*3+2) && cands[r][c].includes(s)) return true;
+        }
+      }
+  }
+  return false;
+}
+
+// Box-Line Reduction
+function hasBoxLineReduction(cands) {
+  for (let n = 1; n <= 9; n++) {
+    const s = String(n);
+    // 行方向
+    for (let r = 0; r < 9; r++) {
+      const boxSet = new Set();
+      for (let c = 0; c < 9; c++)
+        if (cands[r][c].includes(s)) boxSet.add(Math.floor(c/3));
+      if (boxSet.size === 1) {
+        const targetBox = [...boxSet][0];
+        const br = Math.floor(r/3);
+        for (let rr = br*3; rr < br*3+3; rr++) {
+          if (rr === r) continue;
+          for (let c = targetBox*3; c < targetBox*3+3; c++)
+            if (cands[rr][c].includes(s)) return true;
+        }
+      }
+    }
+    // 列方向
+    for (let c = 0; c < 9; c++) {
+      const boxSet = new Set();
+      for (let r = 0; r < 9; r++)
+        if (cands[r][c].includes(s)) boxSet.add(Math.floor(r/3));
+      if (boxSet.size === 1) {
+        const targetBox = [...boxSet][0];
+        const bc = Math.floor(c/3);
+        for (let cc = bc*3; cc < bc*3+3; cc++) {
+          if (cc === c) continue;
+          for (let r = targetBox*3; r < targetBox*3+3; r++)
+            if (cands[r][cc].includes(s)) return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// X-Wing
+function hasXWing(cands) {
+  for (let n = 1; n <= 9; n++) {
+    const s = String(n);
+    for (let r = 0; r < 8; r++) {
+      const cols1 = [];
+      for (let c = 0; c < 9; c++)
+        if (cands[r][c].includes(s)) cols1.push(c);
+      if (cols1.length !== 2) continue;
+      for (let r2 = r+1; r2 < 9; r2++) {
+        const cols2 = [];
+        for (let c = 0; c < 9; c++)
+          if (cands[r2][c].includes(s)) cols2.push(c);
+        if (cols2.length !== 2) continue;
+        if (cols1[0] === cols2[0] && cols1[1] === cols2[1]) {
+          for (let rr = 0; rr < 9; rr++) {
+            if (rr === r || rr === r2) continue;
+            if (cands[rr][cols1[0]].includes(s) ||
+                cands[rr][cols1[1]].includes(s)) return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// XY-Wing
+function hasXYWing(cands) {
+  function sees(r1, c1, r2, c2) {
+    return r1 === r2 || c1 === c2 ||
+      (Math.floor(r1/3) === Math.floor(r2/3) &&
+       Math.floor(c1/3) === Math.floor(c2/3));
+  }
+  for (let r = 0; r < 9; r++)
+    for (let c = 0; c < 9; c++) {
+      const pivot = cands[r][c];
+      if (pivot.length !== 2) continue;
+      const x = pivot[0], y = pivot[1];
+      for (let r2 = 0; r2 < 9; r2++)
+        for (let c2 = 0; c2 < 9; c2++) {
+          if (r2 === r && c2 === c) continue;
+          if (!sees(r, c, r2, c2)) continue;
+          const pA = cands[r2][c2];
+          if (pA.length !== 2) continue;
+          if (!pA.includes(x) && !pA.includes(y)) continue;
+          let z;
+          if (pA[0] === x) z = pA[1];
+          else if (pA[1] === x) z = pA[0];
+          else continue;
+          if (z === y) continue;
+          for (let r3 = 0; r3 < 9; r3++)
+            for (let c3 = 0; c3 < 9; c3++) {
+              if (r3 === r && c3 === c) continue;
+              if (r3 === r2 && c3 === c2) continue;
+              if (!sees(r, c, r3, c3)) continue;
+              const pB = cands[r3][c3];
+              if (pB.length !== 2) continue;
+              if ((pB[0] === y && pB[1] === z) ||
+                  (pB[0] === z && pB[1] === y)) {
+                for (let rr = 0; rr < 9; rr++)
+                  for (let cc = 0; cc < 9; cc++)
+                    if (sees(r2, c2, rr, cc) && sees(r3, c3, rr, cc) &&
+                        cands[rr][cc].includes(z)) return true;
+              }
+            }
+        }
+    }
+  return false;
+}
+
+// 解法チェック統合
+function checkTechnique(puzzle, technique) {
+  if (technique === 0) return true;
+  const cands = buildCandidates(puzzle);
+  switch (technique) {
+    case 1: return hasNakedPair(cands);
+    case 2: return hasNakedTriple(cands);
+    case 3: return hasHiddenPair(cands);
+    case 4: return hasPointingPair(cands);
+    case 5: return hasBoxLineReduction(cands);
+    case 6: return hasXWing(cands);
+    case 7: return hasXYWing(cands);
+    default: return true;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  生成開始（Workerで非同期実行）
+// ═══════════════════════════════════════════════
+function startGeneration(difficulty, technique) {
+  const overlay = document.getElementById('generating-overlay');
+  const msg     = document.getElementById('gen-message');
+  overlay.classList.add('show');
+  msg.textContent = '問題を生成中...';
+
+  // setTimeoutで非同期にして描画を更新してから重い処理へ
+  setTimeout(() => {
+    const TIMEOUT_MS = 30000; // 30秒
+    const startTime = Date.now();
+    let puzzle = null;
+    let found  = false;
+
+    for (let tryCount = 0; tryCount < 10000; tryCount++) {
+      if (Date.now() - startTime > TIMEOUT_MS) break;
+
+      const candidate_puzzle = generatePuzzle(difficulty);
+      if (!candidate_puzzle) continue;
+
+      if (technique === 0 || checkTechnique(candidate_puzzle, technique)) {
+        puzzle = candidate_puzzle;
+        found  = true;
+        break;
+      }
+    }
+
+    overlay.classList.remove('show');
+
+    if (!found) {
+      alert('条件に合う問題が生成できませんでした。\n難易度か解法指定を変えてみてください。');
+      return;
+    }
+
+    // 盤面に反映
+    for (let r = 0; r < 9; r++)
+      for (let c = 0; c < 9; c++) {
+        board[r][c]     = puzzle[r][c];
+        candidate[r][c] = '';
+        myAnswer[r][c]  = false;
+        isPuzzle[r][c]  = puzzle[r][c] !== '';
+        savedAtai[r][c] = '';
+      }
+
+    autoCandidate = false;
+    savedCellRow  = -1;
+    savedCellCol  = -1;
+    selectedRow   = -1;
+    selectedCol   = -1;
+    renderAll();
+
+  }, 50); // 50ms後に実行（描画更新のため）
+}
+
+// ═══════════════════════════════════════════════
+//  初期描画
+// ═══════════════════════════════════════════════
+renderAll();
+</script>
+</body>
+</html>
+
