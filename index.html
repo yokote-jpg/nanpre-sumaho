@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>ナンプレ補助</title>
+<title>ナンプレ作成解答</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -224,7 +224,7 @@
   .modal-row label {
     font-size: 14px;
     color: #555;
-    width: 56px;
+    width: 130px;
     flex-shrink: 0;
   }
 
@@ -288,12 +288,12 @@
 
 <!-- 上部パネル -->
 <div id="panel-top">
-  <button class="btn" id="btn-make">作成</button>
+  <button class="btn" id="btn-make">作成(Generate)</button>
   <button class="btn" id="btn-get">GET</button>
   <button class="btn" id="btn-clr">CLR</button>
   <button class="btn" id="btn-end">END</button>
   <div id="switch-wrap">
-    <span id="switch-label">メモ</span>
+    <span id="switch-label">メモ(Notes)</span>
     <label class="toggle">
       <input type="checkbox" id="layout-switch">
       <div class="toggle-track"></div>
@@ -324,20 +324,20 @@
 <!-- 問題作成モーダル -->
 <div id="modal-overlay">
   <div id="modal-box">
-    <h2>問題作成</h2>
+    <h2>問題作成（Create Puzzle）</h2>
     <div class="modal-row">
-      <label>難易度</label>
+      <label>難易度（Difficulty）</label>
       <select id="sel-difficulty">
-        <option value="0">やさしい</option>
-        <option value="1" selected>ふつう</option>
-        <option value="2">難しい</option>
-        <option value="3">超難しい</option>
+        <option value="0">Easy</option>
+        <option value="1" selected>Normal</option>
+        <option value="2">Hard</option>
+        <option value="3">Expert</option>
       </select>
     </div>
     <div class="modal-row">
-      <label>解法</label>
+      <label>解法（Techniques）</label>
       <select id="sel-technique">
-        <option value="0" selected>指定なし</option>
+        <option value="0" selected>指定なし(Any)</option>
         <option value="1">Naked Pair</option>
         <option value="2">Naked Triple</option>
         <option value="3">Hidden Pair</option>
@@ -348,8 +348,8 @@
       </select>
     </div>
     <div id="modal-btns">
-      <button id="modal-cancel">キャンセル</button>
-      <button id="modal-go">作成開始</button>
+      <button id="modal-cancel">Cancel</button>
+      <button id="modal-go">Start</button>
     </div>
   </div>
 </div>
@@ -357,14 +357,14 @@
 <!-- 生成中オーバーレイ -->
 <div id="generating-overlay">
   <div class="spinner"></div>
-  <div id="gen-message">問題を生成中...</div>
+  <div id="gen-message">Creating puzzle...</div>
 </div>
 
 <script>
 // ── パスワード認証 ──────────────────────
 (function() {
   const correct = 'na';
-  const input = prompt('パスワードを入力してください');
+  const input = prompt('パスワードを入力してください。\nEnter your password.');
   if (input !== correct) {
     document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;font-family:sans-serif;">パスワードが違います</div>';
     throw new Error('unauthorized');
@@ -681,7 +681,7 @@ document.getElementById('btn-get').addEventListener('pointerdown', () => {
       for (let c = 0; c < 9; c++)
         solution[r][c] = work[r][c];
   } else {
-    alert('この問題は解けませんでした（入力ミスの可能性があります）');
+    alert('この問題は解けませんでした（入力ミスの可能性があります）。\nUnable to solve this puzzle (possible input error).');
   }
 
   autoCandidate = true;
@@ -1130,7 +1130,7 @@ function startGeneration(difficulty, technique) {
   const overlay = document.getElementById('generating-overlay');
   const msg     = document.getElementById('gen-message');
   overlay.classList.add('show');
-  msg.textContent = '問題を生成中...';
+  msg.textContent = 'Creating puzzle...';
 
   // setTimeoutで非同期にして描画を更新してから重い処理へ
   setTimeout(() => {
@@ -1155,7 +1155,7 @@ function startGeneration(difficulty, technique) {
     overlay.classList.remove('show');
 
     if (!found) {
-      alert('条件に合う問題が生成できませんでした。\n難易度か解法指定を変えてみてください。');
+      alert('条件に合う問題が生成できませんでした。\n難易度か解法指定を変えてみてください。\nUnable to generate a puzzle.\nPlease adjust the difficulty or solving method.');
       return;
     }
 
