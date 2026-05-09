@@ -362,14 +362,14 @@
 
 <script>
 // ── パスワード認証 ──────────────────────
-(function() {
-  const correct = 'na';
-  const input = prompt('パスワードを入力してください。\nEnter your password.');
-  if (input !== correct) {
-    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;font-family:sans-serif;">パスワードが違います</div>';
-    throw new Error('unauthorized');
-  }
-})();
+//(function() {
+//  const correct = 'na';
+//  const input = prompt('パスワードを入力してください。\nEnter your password.');
+//  if (input !== correct) {
+//    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;font-family:sans-serif;">パスワードが違います</div>';
+//    throw new Error('unauthorized');
+//  }
+//})();
 // ────────────────────────────────────────
 
 // ═══════════════════════════════════════════════
@@ -812,7 +812,7 @@ function countSolutions(bd, limit) {
 }
 
 // ── 穴あけ ──
-const HINT_COUNT = [38, 32, 27, 23];
+const HINT_COUNT = [36, 28, 24, 20];//[38, 32, 27, 23];
 
 function generatePuzzle(difficulty) {
   // 完成盤生成
