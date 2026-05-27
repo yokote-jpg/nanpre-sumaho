@@ -19,6 +19,54 @@
     user-select: none;
     -webkit-user-select: none;
   }
+    /* ── パスワード画面 ── */
+  #pw-screen {
+    position: fixed;
+    inset: 0;
+    background: #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 999;
+  }
+  #pw-screen h1 {
+    font-size: 22px;
+    color: #333;
+  }
+  #pw-screen p {
+    font-size: 13px;
+    color: #666;
+    text-align: center;
+    padding: 0 24px;
+  }
+  #pw-input {
+    width: 220px;
+    height: 44px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 18px;
+    text-align: center;
+    outline: none;
+  }
+  #pw-btn {
+    width: 220px;
+    height: 44px;
+    background: #007AFF;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 17px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #pw-error {
+    color: #FF3B30;
+    font-size: 14px;
+    min-height: 18px;
+  }
   #panel-top {
     display: flex;
     align-items: center;
@@ -154,6 +202,16 @@
 </head>
 <body>
 
+<!-- パスワード画面 -->
+<div id="pw-screen">
+  <h1>ナンプレ補助</h1>
+  <p>ご購入いただきありがとうございます。<br>パスワードを入力してください。</p>
+  <input type="password" id="pw-input" placeholder="パスワード" autocomplete="off">
+  <div id="pw-error"></div>
+  <button id="pw-btn">入力</button>
+</div>
+
+
 <div id="panel-top">
   <button class="btn" id="btn-make">作成(Generate)</button>
   <button class="btn" id="btn-get">GET</button>
@@ -226,6 +284,39 @@
 </div>
 
 <script>
+// ══════════════════════════════════════════
+// ▼▼▼ パスワードをここで変更してください ▼▼▼
+const CORRECT_PASSWORD = 'na';
+// ▲▲▲ パスワードをここで変更してください ▲▲▲
+// ══════════════════════════════════════════
+
+// パスワード認証
+const PW_KEY = 'nanpure_auth';
+const pwScreen = document.getElementById('pw-screen');
+
+function checkAuth() {
+  if (sessionStorage.getItem(PW_KEY) === 'ok') {
+    pwScreen.style.display = 'none';
+  }
+}
+
+document.getElementById('pw-btn').addEventListener('click', () => {
+  const val = document.getElementById('pw-input').value;
+  if (val === CORRECT_PASSWORD) {
+    sessionStorage.setItem(PW_KEY, 'ok');
+    pwScreen.style.display = 'none';
+  } else {
+    document.getElementById('pw-error').textContent = 'パスワードが違います';
+    document.getElementById('pw-input').value = '';
+  }
+});
+
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('pw-btn').click();
+});
+
+checkAuth();
+
 // ═══════════════════════════════════════════════
 //  データ
 // ═══════════════════════════════════════════════
